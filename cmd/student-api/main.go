@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/rohan44942/student-api/internal/config"
 	"github.com/rohan44942/student-api/internal/http/handlers/student"
 )
@@ -24,14 +29,14 @@ func main() {
 	// db connection bad me
 
 	// router setup
-	// router := http.NewServeMux()
-	router := mux.NewRouter()
+	router := http.NewServeMux()
+	// router := mux.NewRouter()
 
-	// router.HandleFunc("POST /api/students", student.New())
+	router.HandleFunc("POST /api/students", student.New())
 	// router.HandleFunc("GET /api/student:id", student.StudentInfo())
 	// router.HandleFunc("/api/students", student.New()).Methods("POST")
-	router.HandleFunc("/api/students", student.New()).Methods("POST")
-	router.HandleFunc("/api/student/{id}", student.StudentInfo()).Methods("GET")
+	// router.HandleFunc("/api/students", student.New()).Methods("POST")
+	// router.HandleFunc("/api/student/{id}", student.StudentInfo()).Methods("GET")
 
 	// http server start
 	server := http.Server{
@@ -39,10 +44,24 @@ func main() {
 		Handler: router,
 	}
 	fmt.Printf("Server starting on port %s\n", cfg.Addr)
-	err := server.ListenAndServe()
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-	//fmt.Println("Server started on port", cfg.Addr)
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil {
+			log.Fatalf("%v", err)
+		}
+	}()
 
+	<-done // listing done channale
+	// sturctured logs
+	slog.Info("shuting down the server")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err := server.Shutdown(ctx) // grace fully doing shutdown
+	//fmt.Println("Server started on port", cfg.Addr)\
+	if err != nil {
+		slog.Error("faild to shutdown server", slog.String("error", err.Error()))
+	}
+	slog.Info("server shutdown successfully")
 }
