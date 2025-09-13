@@ -1,14 +1,36 @@
 package student
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"net/http"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
+	"github.com/rohan44942/student-api/internal/types"
+	"github.com/rohan44942/student-api/internal/utils/response"
 )
 
 func New() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello, bro phla go ka api hit krne ke liye congratulations dude !!!"))
+		var student types.Student
+		err := json.NewDecoder(r.Body).Decode(&student)
+		if errors.Is(err, io.EOF) {
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(fmt.Errorf("empty body")))
+			return
+		}
+		// w.Write([]byte("Hello, bro phla go ka api hit krne ke liye congratulations dude !!!"))
+		if err != nil {
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+			return
+		}
+		// validate the request
+		if err := validator.New().Struct(student); err != nil {
+			response.WriteJson(w, http.StatusAccepted, response.GeneralError(err))
+		}
+		response.WriteJson(w, http.StatusCreated, map[string]string{"success": "ok"})
 	}
 }
 
