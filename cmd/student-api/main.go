@@ -13,6 +13,7 @@ import (
 
 	"github.com/rohan44942/student-api/internal/config"
 	"github.com/rohan44942/student-api/internal/http/handlers/student"
+	"github.com/rohan44942/student-api/internal/storage/sqlite"
 )
 
 func main() {
@@ -27,6 +28,13 @@ func main() {
 
 	cfg := config.MustLoad() // config file parse ho gyi
 	// db connection bad me
+
+	database, err := sqlite.New(cfg)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	slog.Info("storage initializer", slog.String("env", cfg.Env), slog.String("version", "1.0.0"), database)
 
 	// router setup
 	router := http.NewServeMux()
@@ -58,7 +66,7 @@ func main() {
 	slog.Info("shuting down the server")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	err := server.Shutdown(ctx) // grace fully doing shutdown
+	err = server.Shutdown(ctx) // grace fully doing shutdown
 	//fmt.Println("Server started on port", cfg.Addr)\
 	if err != nil {
 		slog.Error("faild to shutdown server", slog.String("error", err.Error()))
