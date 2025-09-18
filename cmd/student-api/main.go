@@ -29,18 +29,18 @@ func main() {
 	cfg := config.MustLoad() // config file parse ho gyi
 	// db connection bad me
 
-	database, err := sqlite.New(cfg)
+	storage, err := sqlite.New(cfg)
 
 	if err != nil {
 		log.Fatal(err)
 	}
-	slog.Info("storage initializer", slog.String("env", cfg.Env), slog.String("version", "1.0.0"), database)
+	slog.Info("storage initializer", slog.String("env", cfg.Env), slog.String("version", "1.0.0"))
 
 	// router setup
 	router := http.NewServeMux()
 	// router := mux.NewRouter()
 
-	router.HandleFunc("POST /api/students", student.New())
+	router.HandleFunc("POST /api/students", student.New(storage))
 	// router.HandleFunc("GET /api/student:id", student.StudentInfo())
 	// router.HandleFunc("/api/students", student.New()).Methods("POST")
 	// router.HandleFunc("/api/students", student.New()).Methods("POST")
