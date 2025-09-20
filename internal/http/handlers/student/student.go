@@ -81,6 +81,7 @@ func GetById(storage storage.Storage) http.HandlerFunc {
 		response.WriteJson(w, http.StatusOK, student)
 	}
 }
+
 func GetList(storage storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// main logic goes here
@@ -92,5 +93,51 @@ func GetList(storage storage.Storage) http.HandlerFunc {
 		}
 
 		response.WriteJson(w, http.StatusOK, students)
+	}
+}
+
+func UpdateById(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// main logic goes here
+		// id from params
+		id := r.PathValue("id")
+		slog.Info("updating a student by id", slog.String("id", id))
+
+		var studentBody types.Student
+		err := json.NewDecoder(r.Body).Decode(&studentBody)
+		if errors.Is(err, io.EOF) {
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(fmt.Errorf("empty body")))
+			return
+		}
+
+		if err != nil {
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+			return
+		}
+		// validate the request
+		if err := validator.New().Struct(studentBody); err != nil {
+			validateErros := err.(validator.ValidationErrors)
+			response.WriteJson(w, http.StatusForbidden, response.ValidationError(validateErros))
+			return
+		}
+
+		intId, err := strconv.ParseInt(id, 10, 64)
+		if err != nil {
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+			return
+		}
+		// student, err := storage.GetStudentById(intId)
+		student, err := storage.UpdateStudentById(intId, studentBody.Name, studentBody.Email, studentBody.Age)
+
+		if err != nil {
+			slog.Error("error updating student user", slog.String("id", id))
+			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+			return
+		}
+
+		response.WriteJson(w, http.StatusOK, map[string]interface{}{
+			"message": "Student is updated with these values",
+			"student": student,
+		})
 	}
 }
